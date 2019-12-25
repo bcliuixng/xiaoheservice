@@ -1,0 +1,143 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../app');
+var debug = require('debug')('test:server');
+const fs = require('fs');
+var express = require('express');
+var InterF = express();
+var assert = require('assert');
+var https = require('https');
+var ws = require('ws');
+var keypath = process.cwd() + '/ssl/2_www.gnxiaohe.club.key';//我把秘钥文件放在运行命令的目录下测试
+var certpath = process.cwd() + '/ssl/1_www.gnxiaohe.club_bundle.crt';//console.log(keypath);
+//console.log(certpath);
+var privateKey = fs.readFileSync(process.cwd() + '/ssl/2_www.gnxiaohe.club.key', 'utf8');
+var certificate = fs.readFileSync(process.cwd() + '/ssl/1_www.gnxiaohe.club_bundle.crt', 'utf8');
+//var caKey = fs.readFileSync(process.cwd() + '/ssl/server.pem', 'utf8');
+var credentials = { key: privateKey, cert: certificate };//, ca:[caKey],passphrase:'111111'
+
+var options = {
+  key: fs.readFileSync(keypath),
+  cert: fs.readFileSync(certpath)//如果秘钥文件有密码的话，用这个属性设置密码
+};
+
+var server = app.listen(80, function () {
+	var host = server.address().address
+	var port = server.address().port
+	console.log("应用实例，访问地址为 http://%s:%s", host, port)
+});
+
+var httpsServer = https.createServer(credentials, app);
+httpsServer.listen(443, function () {
+  console.log('https://localhost:%s', 443);
+});
+var wss = new ws.Server({ server: httpsServer });//把创建好的https服务器丢进websocket的创建函数里，ws会用这个服务器来创建wss服务
+
+/**
+ * Listen on provided port, on all network interfaces.
+*/
+wss.on('error', onError);
+wss.on('listening', onListening);
+
+wss.on('connection', function (wss) {
+  console.log('连接成功！');
+  var DBHelper = require('../DBHelper/DBHelper');
+  var pub = require('../pub/pub');
+  wss.on('message', function (message) {
+    console.log('received: %s', message);
+    var msgrec = "";
+    if (typeof message === "string") {
+      msgrec = message.split(',')[0].split(':')[1];
+      //console.log(msgrec);
+    }
+    switch (msgrec) {
+      case "\"selectOne\"": DBHelper.selectOne(message, wss); break;
+      case "\"selectInfo\"": DBHelper.selectInfo(message, wss); break;
+      case "\"selectInSth\"": DBHelper.selectInSth(message, wss); break;
+      case "\"saveInfo\"": DBHelper.SaveInfo(message, wss); break;
+      case "\"updateInfo\"": DBHelper.UpdateInfo(message, wss); break;
+      case "\"getOpenID\"": pub.getOpenID(message, wss); break;
+      case "\"deleteInfo\"": DBHelper.deleteInfo(message, wss); break;
+      case "\"getSearchCount\"": DBHelper.getSearchCount(message, wss); break;
+      case "\"IncFildsMany\"": DBHelper.IncFildsMany(message, wss); break;
+      case "\"getAccessToken\"": pub.getAccessToken(message,wss); break;
+      case "\"sendMsgToUser\"": pub.sendMsgToUser(message,wss); break;
+      case "\"selectInfoComments\"": DBHelper.selectInfoComments(message,wss); break;
+      case "\"selectCollection\"": DBHelper.selectCollection(message,wss); break;
+      case "\"selectInfoShop\"": DBHelper.selectInfoShop(message,wss); break;
+      case "\"selectInfoBook\"": DBHelper.selectInfoBook(message,wss); break;
+      case "\"selectInfoTop\"": DBHelper.selectInfoTop(message,wss); break;
+      case "\"selectCount\"": DBHelper.selectCount(message,wss); break;
+      case "\"selectInfoGoods\"": DBHelper.selectInfoGoods(message,wss); break;
+      case "\"selectGetSum\"": DBHelper.selectGetSum(message,wss); break;
+      case "\"selectOneCommen\"": DBHelper.selectOneCommen(message,wss); break;
+      case "\"selectSthWithSkip\"": DBHelper.selectSthWithSkip(message,wss); break;
+      case "\"getQrcode\"": pub.getQrcode(message,wss); break;
+      case "\"selectOrder\"": DBHelper.selectOrder(message,wss); break;
+      case "\"SaveOrder\"": DBHelper.SaveOrder(message,wss); break;
+      case "\"selectOrderMain\"": DBHelper.selectOrderMain(message,wss); break;
+    }
+    //console.log(resultStr);
+  });
+  //wss.close();
+})
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = wss.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}
