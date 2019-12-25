@@ -6,7 +6,7 @@
     "start": "node ./bin/www"
   },
   "dependencies": {
-    "axios": "^0.18.0",
+    "axios": "^0.18.1",
     "blueimp-md5": "^2.10.0",
     "bufferutil": "3.0.5",
     "connect-busboy": "0.0.2",
